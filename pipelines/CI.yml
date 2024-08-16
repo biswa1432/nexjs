@@ -1,0 +1,44 @@
+name: $(date:yyyyMMdd)$(rev:.r)
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: ubuntu-latest
+  steps:
+  - checkout: self
+    fetchDepth: 1
+  - task: Bash@3
+    displayName: Create env Files
+    inputs:
+      targetType: inline
+      script: >-
+        touch .env
+
+        echo VERSION= $(Build.BuildNumber) >> .env
+
+        echo BUILD_SHA=$(Build.SourceVersion)>> .env
+
+        echo DESCRIPTION=$(Build.SourceVersionMessage) >> .env
+  - task: Docker@2
+    displayName: Build Image
+    inputs:
+      containerRegistry: $(value)
+      repository: $(repo)
+      command: build
+      Dockerfile: Dockerfile
+      tags: $(Build.BuildNumber)
+  - task: Docker@2
+    displayName: Push Image
+    inputs:
+      containerRegistry: $(value)
+      repository: $(repo)
+      command: push
+      tags: $(Build.BuildNumber)
+  - task: CopyFiles@2
+    displayName: Copy K8 Files
+    inputs:
+      SourceFolder: k8s
+      TargetFolder: $(Build.ArtifactStagingDirectory)
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact
+...
